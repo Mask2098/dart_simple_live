@@ -429,7 +429,18 @@ class DouyinSite implements LiveSite {
           ) ??
           int.tryParse(room["user_count"]?.toString() ?? "") ??
           0;
-      var roomId = (room["id_str"] ?? room["id"] ?? "").toString();
+      // 直播间要用「主播 short_id」当 web_rid 才能进房；
+      // room.id_str 是 19 位一次性房间号，旧的 reflow 接口已失效。
+      var roomId = "";
+      if (owner is Map) {
+        roomId = (owner["short_id"] ?? owner["web_rid"] ?? "").toString();
+      }
+      if (roomId.isEmpty && raw is Map) {
+        roomId = (raw["web_rid"] ?? "").toString();
+      }
+      if (roomId.isEmpty) {
+        roomId = (room["id_str"] ?? room["id"] ?? "").toString();
+      }
       if (roomId.isEmpty) {
         continue;
       }
