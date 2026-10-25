@@ -36,6 +36,29 @@ class LiveRoomCard extends StatelessWidget {
                   width: double.infinity,
                 ),
               ),
+              if (item.isFollowed)
+                Positioned(
+                  left: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      "关注",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 right: 0,
                 left: 0,

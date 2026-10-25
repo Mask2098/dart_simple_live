@@ -10648,31 +10648,60 @@ function getMSSDKSignature(msStub, userAgent) {
 ''';
 
   static const String defaultUserAgent = DouyinSite.kDefaultUserAgent;
+
+  /// kABogus / kWebMsSDK 都是几百 KB 的 JS 脚本，
+  /// 每次签名都新建 JsRuntime 再 eval 一遍会白等几百毫秒，这里复用同一个运行时。
+  static JsRuntime? _abogusRuntime;
+  static JsRuntime? _webMsSdkRuntime;
+
+  static JsRuntime _abogusJs() {
+    var runtime = _abogusRuntime;
+    if (runtime == null) {
+      runtime = JsRuntime(
+        memoryLimit: 4 * 1024 * 1024,
+        maxStackSize: 64 * 1024,
+      );
+      runtime.eval(kABogus);
+      _abogusRuntime = runtime;
+    }
+    return runtime;
+  }
+
+  static JsRuntime _webMsSdkJs() {
+    var runtime = _webMsSdkRuntime;
+    if (runtime == null) {
+      runtime = JsRuntime(
+        memoryLimit: 4 * 1024 * 1024,
+        maxStackSize: 128 * 1024,
+      );
+      runtime.eval(kWebMsSDK);
+      _webMsSdkRuntime = runtime;
+    }
+    return runtime;
+  }
+
+  /// 释放常驻的 JS 运行时（单元测试或退出时调用）。
+  static void disposeRuntimes() {
+    _abogusRuntime?.dispose();
+    _abogusRuntime = null;
+    _webMsSdkRuntime?.dispose();
+    _webMsSdkRuntime = null;
+  }
+
   static String getAbogusUrl(String url, String userAgent) {
-    JsRuntime flutterJs = JsRuntime(
-      memoryLimit: 4 * 1024 * 1024,
-      maxStackSize: 64 * 1024,
-    );
+    final flutterJs = _abogusJs();
     final msToken = generateMsToken(107);
     var params = ('$url&msToken=$msToken').split('?')[1];
     var query = params.contains("?") ? params.split("?")[1] : params;
-    var jsCode = kABogus;
-    flutterJs.eval(jsCode);
     // 执行getABogus函数
     var aBogus = flutterJs.eval("getABogus('$query', '$userAgent')");
-    flutterJs.dispose();
     var newUrl =
         '$url&msToken=${Uri.encodeComponent(msToken)}&a_bogus=${Uri.encodeComponent(aBogus)}';
     return newUrl;
   }
 
   static String getSignature(String roomId, String uniqueId) {
-    JsRuntime flutterJs = JsRuntime(
-      memoryLimit: 4 * 1024 * 1024,
-      maxStackSize: 128 * 1024,
-    );
-
-    flutterJs.eval(kWebMsSDK);
+    final flutterJs = _webMsSdkJs();
     var msStub = getMsStub(roomId, uniqueId);
     var signature = flutterJs.eval(
       "getMSSDKSignature('$msStub','$defaultUserAgent')",
@@ -10683,7 +10712,6 @@ function getMSSDKSignature(msStub, userAgent) {
         "getMSSDKSignature('$msStub','$defaultUserAgent')",
       );
     }
-    flutterJs.dispose();
     return signature;
   }
 

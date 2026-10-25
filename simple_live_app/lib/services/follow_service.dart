@@ -223,6 +223,29 @@ class FollowService extends GetxService {
   }
 
   Future updateLiveStatus(FollowUser item) async {
+    await _refreshItem(item);
+    updatedCount++;
+    if (updatedCount >= followList.length) {
+      filterData();
+      updating.value = false;
+    }
+  }
+
+  /// 只刷新某个站点下状态未知的关注（首页推荐用来补一次抖音关注状态）。
+  /// 不参与 [updatedCount] 计数，避免打乱整体轮询的完成判定。
+  Future<void> refreshStatusForSite(String siteId, {int limit = 8}) async {
+    var targets = followList
+        .where((e) => e.siteId == siteId && e.liveStatus.value == 0)
+        .take(limit)
+        .toList();
+    if (targets.isEmpty) {
+      return;
+    }
+    await Future.wait(targets.map(_refreshItem));
+    filterData();
+  }
+
+  Future<void> _refreshItem(FollowUser item) async {
     try {
       var site = Sites.allSites[item.siteId]!;
       // 先只查状态
@@ -239,12 +262,6 @@ class FollowService extends GetxService {
       Log.logPrint(e);
       item.liveStatus.value = 0;
       item.liveStartTime = null;
-    } finally {
-      updatedCount++;
-      if (updatedCount >= followList.length) {
-        filterData();
-        updating.value = false;
-      }
     }
   }
 

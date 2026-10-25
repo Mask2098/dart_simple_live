@@ -80,13 +80,44 @@ class AccountController extends GetxController {
   }
 
   void douyinTap() async {
-    if (DouyinAccountService.instance.hasCookie.value) {
-      var result = await Utils.showAlertDialog("确定要清除自定义 ttwid 吗？", title: "清除配置");
+    // 已登录：只提供退出
+    if (DouyinAccountService.instance.logined.value) {
+      var result = await Utils.showAlertDialog(
+        "当前已登录抖音账号，退出后「我的关注」会回退到本地关注列表。",
+        title: "退出抖音登录",
+      );
       if (result) {
         DouyinAccountService.instance.clearCookie();
-        SmartDialog.showToast("已清除自定义 ttwid，将使用默认 ttwid");
+        SmartDialog.showToast("已退出抖音账号");
       }
-    } else {
+      return;
+    }
+
+    // 未登录：在「网页登录」和「手动填 cookie」之间选
+    var action = await Get.dialog<String>(
+      AlertDialog(
+        title: const Text("抖音直播"),
+        content: const Text(
+          "登录抖音账号后，首页「我的关注」会直接展示账号关注的主播；"
+          "不登录也可以继续看热门直播。",
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: "cookie"),
+            child: const Text("手动填 Cookie"),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: "login"),
+            child: const Text("网页登录"),
+          ),
+        ],
+      ),
+    );
+
+    if (action == "login") {
+      Get.toNamed(RoutePath.kDouyinWebLogin);
+    } else if (action == "cookie") {
       doDouyinCookieConfig();
     }
   }
